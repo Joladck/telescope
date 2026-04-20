@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QApplication,QWidget,QDateEdit, QPushButton, QMainWi
 from PyQt6.QtCore import Qt
 import pandas as pd
 
+
 class MWindow(QMainWindow):
     def  __init__(self,wt):
         '''
@@ -132,7 +133,6 @@ class search_bar(QDockWidget):
             'product':self.product.text()
         }
 
-        print(output_dict)
         return output_dict
 
         
@@ -145,7 +145,6 @@ if __name__=='__main__':
     data=data[['Panama','Mexico']]
     dcols=data.columns
     data=data.to_dict('records')
-    print(data)
     window=MWindow('Telescope')
     newWidg={QTableWidget: window }
     window.add_widget('search',search_bar='self')
