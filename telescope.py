@@ -87,8 +87,9 @@ class search_bar(QDockWidget):
         
         #search form layout init
         self.search_form=QWidget()
-        
         layout=QFormLayout(self.search_form)
+        
+        ##search fields for kpler
         self.data_set=QComboBox(self.search_form)
         self.data_set.addItems(['Exports','Imports',''])
         self.countries=QLineEdit('Enter items separated by a comma',self.search_form,)
@@ -102,7 +103,9 @@ class search_bar(QDockWidget):
         self.data_count.addItems(['origin countries','destination countries'])
         self.product=QLineEdit('Enter items separated by a comma',self.search_form)
         self.submit=QPushButton('Submit',self.search_form)
-
+        self.submit.clicked.connect(self.data_submitted)        
+    
+        ##adding to layout
         layout.addRow('Dataset', self.data_set)
         layout.addRow('Countries',self.countries)
         layout.addRow('Start Date',self.start_date)
@@ -113,13 +116,24 @@ class search_bar(QDockWidget):
         layout.addRow('Product',self.product)
         layout.addRow(self.submit)
         
-        self.search_form.setLayout(layout)
-        
-
         #Dock widget setup
+        self.search_form.setLayout(layout)
         self.setWidget(self.search_form)
 
-        
+    def data_submitted(self):
+        output_dict={
+            'dataset': self.data_set.currentText(),
+            'countries': self.countries.text(),
+            'start_date':self.start_date.text(),
+            'end_date':self.end_date.text(),
+            'units':self.units.currentText(),
+            'period':self.period.currentText(),
+            'split':self.data_count.currentText(),
+            'product':self.product.text()
+        }
+
+        print(output_dict)
+        return output_dict
 
         
 
