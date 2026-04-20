@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QApplication,QWidget,QLabel, QMainWindow,QTableWidget,QTableWidgetItem,QDockWidget,QComboBox, QVBoxLayout
+from PyQt6.QtWidgets import QApplication,QWidget,QDateEdit, QPushButton, QMainWindow,QTableWidget,QTableWidgetItem,QDockWidget,QComboBox, QLineEdit,QVBoxLayout,QHBoxLayout,QFormLayout
 from PyQt6.QtCore import Qt
 import pandas as pd
 
@@ -34,6 +34,9 @@ class MWindow(QMainWindow):
         exec(command)
 
 
+"""
+I would be interested in turning this into the MVC class eventually
+"""
 class sm_table(QTableWidget):
     """
     sm_table (smart table) is an implementation of the table class that can dynamically fill itself
@@ -78,15 +81,46 @@ class sm_table(QTableWidget):
 
 class search_bar(QDockWidget):
     def __init__(self, parent):
+        #Dock init
         super().__init__(parent)
         self.setWindowTitle('Search')
-   
-        self.endpoint=QComboBox(self)
-        self.endpoint.addItems(['Exports','Imports',''])
+        
+        #search form layout init
+        self.search_form=QWidget()
+        
+        layout=QFormLayout(self.search_form)
+        self.data_set=QComboBox(self.search_form)
+        self.data_set.addItems(['Exports','Imports',''])
+        self.countries=QLineEdit('Enter items separated by a comma',self.search_form,)
+        self.start_date=QDateEdit(self.search_form)
+        self.end_date=QDateEdit(self.search_form)
+        self.units=QComboBox(self.search_form)
+        self.units.addItems(['kbd','bbl','kb','mmbbl','mt','kt','t','cm'])
+        self.period=QComboBox(self.search_form)
+        self.period.addItems(['annually','monthly','weekly','eia-weekly','daily'])
+        self.data_count=QComboBox(self.search_form)
+        self.data_count.addItems(['origin countries','destination countries'])
+        self.product=QLineEdit('Enter items separated by a comma',self.search_form)
+        self.submit=QPushButton('Submit',self.search_form)
 
-        datalab=QLabel('Dataset', self)
-        self.setWidget(datalab)
-        self.setWidget(self.endpoint)
+        layout.addRow('Dataset', self.data_set)
+        layout.addRow('Countries',self.countries)
+        layout.addRow('Start Date',self.start_date)
+        layout.addRow('End Date',self.end_date)
+        layout.addRow('Unit',self.units)
+        layout.addRow('Period',self.period)
+        layout.addRow('Data Type',self.data_count)
+        layout.addRow('Product',self.product)
+        layout.addRow(self.submit)
+        
+        self.search_form.setLayout(layout)
+        
+
+        #Dock widget setup
+        self.setWidget(self.search_form)
+
+        
+
         
 
 
