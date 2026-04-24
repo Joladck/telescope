@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QApplication,QWidget,QDateEdit, QPushButton, QMainWindow,QTableWidget,QTableWidgetItem,QDockWidget,QComboBox, QLineEdit,QVBoxLayout,QHBoxLayout,QFormLayout
 from PyQt6.QtCore import Qt
 import pandas as pd
+import kpler_handler as kph
 
 """
 test
@@ -14,6 +15,14 @@ class MWindow(QMainWindow):
         '''
         super().__init__()
         self.setWindowTitle(wt)
+
+        self.table=sm_table(self)
+        self.setCentralWidget(self.table)
+
+        self.searcher=search_bar(self)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea,self.searcher)
+
+        self.searcher.submit.clicked.connect(self.data_submitted)
 
     def add_widget(self,name,**kwargs):
         '''
@@ -35,6 +44,20 @@ class MWindow(QMainWindow):
         of this class is realized'''
         command=f'self.setCentralWidget(self.{name})'
         exec(command)
+
+    def data_submitted(self):
+        output_dict={
+            'dataset': self.searcher.data_set.currentText(),
+            'countries': self.searcher.countries.text(),
+            'start_date':self.searcher.start_date.text(),
+            'end_date':self.searcher.end_date.text(),
+            'units':self.searcher.units.currentText(),
+            'period':self.searcher.period.currentText(),
+            'split':self.searcher.data_count.currentText(),
+            'product':self.searcher.product.text()
+        }
+        data=kph.flow_handler(output_dict,kph.conf)
+        self.table.load_data(data)
 
 
 """
@@ -81,6 +104,14 @@ class sm_table(QTableWidget):
                 self.setItem(i,cell,QTableWidgetItem(str(dict[i][z])))
                 cell+=1
 
+    def load_data(self,data):
+        self.frame_data=data.copy()
+        dcols=data.columns
+        data_dict=data.to_dict('records')
+
+        self.add_cols(dcols)
+        self.add_rows(data_dict)
+
 
 class search_bar(QDockWidget):
     def __init__(self, parent):
@@ -110,7 +141,9 @@ class search_bar(QDockWidget):
         'vessel type oil' ])
         self.product=QLineEdit('Enter items separated by a comma',self.search_form)
         self.submit=QPushButton('Submit',self.search_form)
-        self.submit.clicked.connect(self.data_submitted)        
+        
+        
+        #self.submit.clicked.connect(self.data_submitted)        
     
         ##adding to layout
         layout.addRow('Dataset', self.data_set)
@@ -122,10 +155,12 @@ class search_bar(QDockWidget):
         layout.addRow('Data Type',self.data_count)
         layout.addRow('Product',self.product)
         layout.addRow(self.submit)
-        
         #Dock widget setup
         self.search_form.setLayout(layout)
         self.setWidget(self.search_form)
+
+    """
+    Scheduled for deletion
 
     def data_submitted(self):
         output_dict={
@@ -140,25 +175,20 @@ class search_bar(QDockWidget):
         }
 
         return output_dict
-
+    """
         
 
 
 if __name__=='__main__':
     telescope=QApplication([])
 
-    data=pd.read_csv('Export.csv')
+    #data=pd.read_csv('Export.csv')
  #   data=data[['Panama','Mexico']]
-    dcols=data.columns
-    data=data.to_dict('records')
+    #dcols=data.columns
+    #data=data.to_dict('records')
     window=MWindow('Telescope')
-    newWidg={QTableWidget: window }
-    window.add_widget('search',search_bar='self')
-    window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea,window.search)
-    window.add_widget('report_tab',sm_table='self')
-    window.center_widget('report_tab')
-    window.report_tab.add_cols(dcols)
-    window.report_tab.add_rows(data)
+    #window.table.add_cols(dcols)
+    #window.table.add_rows(data)
 
     window.show()
     #QTableWidget().setColumnWidth()

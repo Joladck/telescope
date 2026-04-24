@@ -3,8 +3,8 @@ from kpler.sdk import Platform,FlowsDirection, FlowsSplit, FlowsPeriod, FlowsMea
 from kpler.sdk.resources.flows import Flows
 from datetime import date
 
-flow_dir={'Export':FlowsDirection.Export,
-          'Import':FlowsDirection.Import,
+flow_dir={'Exports':FlowsDirection.Export,
+          'Imports':FlowsDirection.Import,
           'Net Exports':FlowsDirection.NetExport,
           'Net Imports':FlowsDirection.NetImport}
 
