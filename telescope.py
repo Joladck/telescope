@@ -103,7 +103,11 @@ class search_bar(QDockWidget):
         self.period=QComboBox(self.search_form)
         self.period.addItems(['annually','monthly','weekly','eia-weekly','daily'])
         self.data_count=QComboBox(self.search_form)
-        self.data_count.addItems(['origin countries','destination countries'])
+        self.data_count.addItems(['origin countries','destination countries','buyers','charterers','crude quality', 'destination continents',
+        'destination installations','destination padds','destination subcontinents','destination trading regions', 'grades', 'long haul vessel type',
+        'long haul vessel type cpp','long haul vessel type oil', 'origin continents', 'origin installations', 'origin padds',
+        'origin subcontinent', 'origin trading region', 'products', 'routes', 'sellers','source', 'total','trade status','vessel type', 'vessel type cpp',''
+        'vessel type oil' ])
         self.product=QLineEdit('Enter items separated by a comma',self.search_form)
         self.submit=QPushButton('Submit',self.search_form)
         self.submit.clicked.connect(self.data_submitted)        
@@ -144,7 +148,7 @@ if __name__=='__main__':
     telescope=QApplication([])
 
     data=pd.read_csv('Export.csv')
-    data=data[['Panama','Mexico']]
+ #   data=data[['Panama','Mexico']]
     dcols=data.columns
     data=data.to_dict('records')
     window=MWindow('Telescope')
