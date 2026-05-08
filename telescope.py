@@ -1,11 +1,15 @@
-from PyQt6.QtWidgets import QApplication,QWidget,QDateEdit, QPushButton, QMainWindow,QTableWidget,QTableWidgetItem,QDockWidget,QComboBox, QLineEdit,QVBoxLayout,QHBoxLayout,QFormLayout
+from PyQt6.QtWidgets import (QApplication,QComboBox,QDateEdit,QDialog,QDockWidget,QFileDialog,QFormLayout,QGridLayout,QHBoxLayout,QLabel,QLineEdit,
+                             QMainWindow,QMessageBox,QPushButton,QTabWidget,QTableWidget,QTableWidgetItem, QVBoxLayout,QWidget)
+from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 import pandas as pd
 import kpler_handler as kph
+from datetime import datetime
+import json
+import sys
+import os
 
-"""
-test
-"""
+
 class MWindow(QMainWindow):
     def  __init__(self,wt):
         '''
@@ -16,14 +20,68 @@ class MWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(wt)
 
+        self.conf_window=config_window(self)
+        
+
+        #directory for saving any documents
+        cwpath=os.getcwd()
+        confpath=cwpath
+        confpath+='/conf.json'
+        if os.path.exists('conf.json'):
+            fl=open('conf.json','r')
+            path=json.load(fl)
+            self.save_path=path['path']
+        else:
+            self.save_path=''
+
+        #menu setup
+        self.menu_bar=self.menuBar()
+
+        file_menu= self.menu_bar.addMenu('&File')
+        help_menu= self.menu_bar.addMenu('&Help')
+
+        ##menu items
+        ###file menu
+        load_action=QAction('&Load Dataset',self)
+        load_action.setStatusTip('Load a saved dataset, erases current one')
+        load_action.setShortcut('Ctrl+l')
+        load_action.triggered.connect(self.load_existing_data)
+        file_menu.addAction(load_action)
+
+        conf_action=QAction('&Configure',self)
+        conf_action.setStatusTip('Alter parametters important to multiple functions')
+        conf_action.setShortcut('Ctrl+c')
+        conf_action.triggered.connect(self.configuration_settings_setup)
+        file_menu.addAction(conf_action)
+
+        ##help menu
+        doc_action=QAction('&Manual',self)
+        doc_action.setStatusTip('pulls up a set of instructions for the program')
+        doc_action.setShortcut('Ctrl+h')
+        doc_action.triggered.connect(self.help_window)
+        help_menu.addAction(doc_action)
+
+
+
+        
+        #adding central widget, table
         self.table=sm_table(self)
         self.setCentralWidget(self.table)
 
+        #initializign Dock
         self.searcher=search_bar(self)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea,self.searcher)
 
+        #connecting Dock slots to functions, being done here because this parent widget
+        #can connect to the table widget, whereas the dock would not have access to it
         self.searcher.submit.clicked.connect(self.data_submitted)
+        self.searcher.test_data_load.clicked.connect(self.load_test)
+        self.conf_window.accepted.connect(self.update_save_path)
 
+        #data model
+        self.kph_conf=kph.gen_conf()
+
+    #metaprogramming function for testing purposes  only
     def add_widget(self,name,**kwargs):
         '''
         SHOULD BE REMOVED
@@ -38,6 +96,7 @@ class MWindow(QMainWindow):
         command= f"self.{name}={k}({val})"
         exec(command)
 
+    #metaprogramming function for testing purposes  only
     def center_widget(self,name):
         '''SHOULD BE REMOVED
         this function is meant to help add widgets dynamically, it's temporary, and will be removed once the full scope
@@ -45,20 +104,58 @@ class MWindow(QMainWindow):
         command=f'self.setCentralWidget(self.{name})'
         exec(command)
 
+    #TEST FUNCTION                               
+    def load_test(self):
+        data=pd.read_csv('Export.csv')
+        self.table.load_data(data)
+
+    #sends info from Dock to Table through MainWindow
     def data_submitted(self):
+        
         output_dict={
             'dataset': self.searcher.data_set.currentText(),
             'countries': self.searcher.countries.text(),
-            'start_date':self.searcher.start_date.text(),
-            'end_date':self.searcher.end_date.text(),
+            'start_date':self.searcher.start_date.dateTime().toPyDateTime(),
+            'end_date':self.searcher.end_date.dateTime().toPyDateTime(),
             'units':self.searcher.units.currentText(),
             'period':self.searcher.period.currentText(),
             'split':self.searcher.data_count.currentText(),
             'product':self.searcher.product.text()
         }
-        data=kph.flow_handler(output_dict,kph.conf)
+
+        #this helps generate a dynamic name for the hypothetical save file
+        dataset=output_dict['dataset']
+        split=output_dict['split']
+        self.file_title=f'{dataset}_split_by_{split}_{datetime.now().date}'
+
+        #kpler function call via handler
+        data=kph.flow_handler(output_dict,self.kph_conf)
         self.table.load_data(data)
 
+    def update_save_path(self):
+        fl=open('conf.json','r')
+        path=json.load(fl)
+        self.save_path=path['path']
+        
+    def load_existing_data(self):
+        #TODO
+        pass
+
+    def configuration_settings_setup(self):
+        self.conf_window.show()
+        
+
+    def help_window(self):
+        #TODO
+        pass
+
+    def export_table(self):  
+        # function to save data loaded
+        if pd.isna(self.table.view_data()):
+            self.table.frame_data.to_csv (f'{self.save_path}/{self.file_title}')
+
+        else:
+            self.table.frame_data.to_csv(f'{self.save_path}/{self.file_title}')
 
 """
 I would be interested in turning this into the MVC class eventually
@@ -104,8 +201,28 @@ class sm_table(QTableWidget):
                 self.setItem(i,cell,QTableWidgetItem(str(dict[i][z])))
                 cell+=1
 
+    def overwrite_data(func):
+        """
+        because I foresee having to clear the table often, I made this decorator to handle that task
+        because this is simply a fairly standard procedure that doesn't really need much more consideration
+        this is probably the most eficient way of handling it. if I ever do need something to append to the current
+        table, I can simply not use it.
+        """
+        def inner(self,data):
+
+            if self.rowCount() != 0 or self.columnCount()!=0:
+                self.clear()
+
+            return func(self,data)
+        return inner
+
+    @overwrite_data
     def load_data(self,data):
+        """
+        takes the data and extracts from it relevant components for add_columns and add_rows
+        """
         self.frame_data=data.copy()
+        self.view_data=pd.DataFrame()
         dcols=data.columns
         data_dict=data.to_dict('records')
 
@@ -118,80 +235,158 @@ class search_bar(QDockWidget):
         #Dock init
         super().__init__(parent)
         self.setWindowTitle('Search')
+
+        self.main_window=QWidget(self)
+        main_layout=QVBoxLayout(self.main_window)
+        
+
+        #tab for utility purposes
+        tab=QTabWidget()
         
         #search form layout init
-        self.search_form=QWidget()
-        layout=QFormLayout(self.search_form)
+        self.search_form=QWidget(self)
+        layout_1=QFormLayout(self.search_form)
         
         ##search fields for kpler
         self.data_set=QComboBox(self.search_form)
         self.data_set.addItems(['Exports','Imports',''])
+
         self.countries=QLineEdit('Enter items separated by a comma',self.search_form,)
+
         self.start_date=QDateEdit(self.search_form)
         self.end_date=QDateEdit(self.search_form)
+        self.start_date.setDisplayFormat('MM/dd/yyyy')
+        self.end_date.setDisplayFormat('MM/dd/yyyy')
+
         self.units=QComboBox(self.search_form)
         self.units.addItems(['kbd','bbl','kb','mmbbl','mt','kt','t','cm'])
+
         self.period=QComboBox(self.search_form)
         self.period.addItems(['annually','monthly','weekly','eia-weekly','daily'])
+
         self.data_count=QComboBox(self.search_form)
         self.data_count.addItems(['origin countries','destination countries','buyers','charterers','crude quality', 'destination continents',
         'destination installations','destination padds','destination subcontinents','destination trading regions', 'grades', 'long haul vessel type',
         'long haul vessel type cpp','long haul vessel type oil', 'origin continents', 'origin installations', 'origin padds',
         'origin subcontinent', 'origin trading region', 'products', 'routes', 'sellers','source', 'total','trade status','vessel type', 'vessel type cpp',''
         'vessel type oil' ])
+
         self.product=QLineEdit('Enter items separated by a comma',self.search_form)
+
+        ##buttons
         self.submit=QPushButton('Submit',self.search_form)
-        
+        self.exportb=QPushButton('Export',self.search_form)
+        self.test_data_load=QPushButton('Load Test',self.search_form)
         
         #self.submit.clicked.connect(self.data_submitted)        
     
         ##adding to layout
-        layout.addRow('Dataset', self.data_set)
-        layout.addRow('Countries',self.countries)
-        layout.addRow('Start Date',self.start_date)
-        layout.addRow('End Date',self.end_date)
-        layout.addRow('Unit',self.units)
-        layout.addRow('Period',self.period)
-        layout.addRow('Data Type',self.data_count)
-        layout.addRow('Product',self.product)
-        layout.addRow(self.submit)
-        #Dock widget setup
-        self.search_form.setLayout(layout)
-        self.setWidget(self.search_form)
+        layout_1.addRow('Dataset', self.data_set)
+        layout_1.addRow('Countries',self.countries)
+        layout_1.addRow('Start Date',self.start_date)
+        layout_1.addRow('End Date',self.end_date)
+        layout_1.addRow('Unit',self.units)
+        layout_1.addRow('Period',self.period)
+        layout_1.addRow('Data Type',self.data_count)
+        layout_1.addRow('Product',self.product)
+        layout_1.addRow(self.submit)
+        layout_1.addRow(self.exportb)        
+        layout_1.addRow(self.test_data_load)
 
-    """
-    Scheduled for deletion
-
-    def data_submitted(self):
-        output_dict={
-            'dataset': self.data_set.currentText(),
-            'countries': self.countries.text(),
-            'start_date':self.start_date.text(),
-            'end_date':self.end_date.text(),
-            'units':self.units.currentText(),
-            'period':self.period.currentText(),
-            'split':self.data_count.currentText(),
-            'product':self.product.text()
-        }
-
-        return output_dict
-    """
         
+        
+        #second form for editing
+        self.edit_form=QWidget(self)
+        layout_2=QFormLayout(self.edit_form)
+
+        ##these are fields useful for editing WIP        
+        self.wip=QLabel('This Section is a Work in Progress')
+
+        ##adding to layout
+        layout_2.addRow(self.wip)
+
+        
+        #Dock widget setup
+        self.search_form.setLayout(layout_1)
+        self.edit_form.setLayout(layout_2)
+        
+        #adding tabs
+        tab.addTab(self.search_form,'Import')
+        tab.addTab(self.edit_form,'Edit')
+
+        #finalizing dock components
+        main_layout.addWidget(tab)
+        self.main_window.setLayout(main_layout)
+        self.setWidget(self.main_window)
+ 
+class config_window(QDialog):
+    def __init__(self,parent):
+        super().__init__(parent)
+        self.setWindowTitle('Configuration')
+
+        #widget + layout combo
+        main_layout=QGridLayout()
+        
+        ##form wiget
+        self.config_menu=QWidget()
+        config_form=QFormLayout()
+
+        #in form layout
+        file_item=QWidget()
+        file_item_layout=QHBoxLayout()
+
+        #class attributes
+        self.desc_lab_path=QLabel('Path')
+        self.current_path=QLineEdit('enter path here')
+        ##ideally I would have an icon
+        self.pathfind_dialogue_button=QPushButton("Find Path")
+
+        self.desc_usr_lab=QLabel('Username')
+        self.user_input=QLineEdit('example@company.com')
+
+        self.desc_pass_lab=QLabel('Password')
+        self.pass_input=QLineEdit('********')
+        ##make the field hide password characters
+        self.pass_input.setEchoMode(QLineEdit.EchoMode.Password)
+        
+        self.apply=QPushButton('Apply')
+        self.apply.clicked.connect(self.apply_changes)
+        
+        #form rows
+        ##file_line item row
+        file_item_layout.addWidget(self.current_path)
+        file_item_layout.addWidget(self.pathfind_dialogue_button)
+        file_item.setLayout(file_item_layout)
+
+        config_form.addRow(self.desc_lab_path,file_item)
+        config_form.addRow(self.desc_usr_lab,self.user_input)
+        config_form.addRow(self.desc_pass_lab,self.pass_input)
+        self.config_menu.setLayout(config_form)
+
+        #adding wigets to layout
+        main_layout.addWidget(self.config_menu,0,0)
+        main_layout.addWidget(self.apply,1,1)
+        self.setLayout(main_layout)
+        
+
+        
+    def apply_changes(self):
+        config={'username':self.user_input.text(),
+                   'password':self.pass_input.text(),
+                   'path':self.current_path.text()}
+        
+        conf_fl=open('conf.json','w')
+        json.dump(config,conf_fl)
+        self.done(1)
+
+
 
 
 if __name__=='__main__':
     telescope=QApplication([])
 
-    #data=pd.read_csv('Export.csv')
- #   data=data[['Panama','Mexico']]
-    #dcols=data.columns
-    #data=data.to_dict('records')
     window=MWindow('Telescope')
-    #window.table.add_cols(dcols)
-    #window.table.add_rows(data)
 
     window.show()
-    #QTableWidget().setColumnWidth()
-
 
     telescope.exec()   

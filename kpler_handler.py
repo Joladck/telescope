@@ -4,11 +4,16 @@ from kpler.sdk.resources.flows import Flows
 from datetime import date
 import utility_dicts as ud
 import json
-fl=open('conf.json')
-crd=json.load(fl)
-usr=crd['username']
-psw=crd['password']
-conf=Configuration(Platform.Liquids,usr,psw)
+
+
+#generate_configuration
+def gen_conf():
+    fl=open('conf.json')
+    crd=json.load(fl)
+    usr=crd['username']
+    psw=crd['password']
+    conf=Configuration(Platform.Liquids,usr,psw)
+    return conf
 
 
 # available platforms Liquids and LNG
