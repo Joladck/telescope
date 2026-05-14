@@ -1,12 +1,16 @@
 from kpler.sdk.configuration import Configuration
 from kpler.sdk import Platform,FlowsDirection, FlowsSplit, FlowsPeriod, FlowsMeasurementUnit,RefinedProducts
+from kpler.sdk.resources.products import Products 
 from kpler.sdk.resources.flows import Flows
+import kpler_handler as kph
 from datetime import date
 
 flow_dir={'Exports':FlowsDirection.Export,
           'Imports':FlowsDirection.Import,
           'Net Exports':FlowsDirection.NetExport,
           'Net Imports':FlowsDirection.NetImport}
+
+flow_dir_labs=list(flow_dir.keys())
 
 flow_units={
     'kbd':FlowsMeasurementUnit.KBD,
@@ -19,6 +23,8 @@ flow_units={
     'cm':FlowsMeasurementUnit.CM
 }
 
+flow_units_lab=list(flow_units.keys())
+
 flow_period={
     'annually': FlowsPeriod.Annually,
     'monthly':FlowsPeriod.Monthly,
@@ -27,6 +33,7 @@ flow_period={
     'daily': FlowsPeriod.Daily
 }
 
+flow_period_lab=list(flow_period.keys())
 
 flow_split={
     'origin countries': FlowsSplit.OriginCountries,
@@ -58,3 +65,14 @@ flow_split={
     'vessel type cpp':FlowsSplit.VesselTypeCpp,
     'vessel type oil': FlowsSplit.VesselTypeOil
 }
+
+flow_split_labs=list(flow_split.keys())
+product_type= ['','grade', 'commodity','family','group','subgrade']
+
+
+
+if __name__=='__main__':
+    conf=kph.gen_conf()
+    test=Products(conf).get()
+    test.to_csv('product.csv')
+    print(flow_split_labs)

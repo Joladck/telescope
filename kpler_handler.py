@@ -1,6 +1,7 @@
 from kpler.sdk.configuration import Configuration
 from kpler.sdk import Platform,FlowsDirection, FlowsSplit, FlowsPeriod, FlowsMeasurementUnit,RefinedProducts
 from kpler.sdk.resources.flows import Flows
+from kpler.sdk.resources.products import Products 
 from datetime import date
 import utility_dicts as ud
 import json
@@ -45,3 +46,7 @@ def flow_handler(arg_dict,conf):
            products=product,
            from_zones=from_zone)
     return data
+
+if __name__=='__main__':
+    conf=gen_conf()
+    print(Products(conf).get().columns)

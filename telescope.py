@@ -1,14 +1,18 @@
-from PyQt6.QtWidgets import (QApplication,QComboBox,QDateEdit,QDialog,QDockWidget,QFileDialog,QFormLayout,QGridLayout,QHBoxLayout,QLabel,QLineEdit,
+from PyQt6.QtWidgets import (QAbstractItemView,QApplication,QCheckBox,QComboBox,QDateEdit,QDialog,QDockWidget,QFileDialog,QFormLayout,QGridLayout,QHBoxLayout,QLabel,QLineEdit,QListWidget,
                              QMainWindow,QMessageBox,QPushButton,QTabWidget,QTableWidget,QTableWidgetItem, QVBoxLayout,QWidget)
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction,QBrush
 from PyQt6.QtCore import Qt
 import pandas as pd
 import kpler_handler as kph
+import utility_dicts as ud
 from datetime import datetime
 import json
 import sys
 import os
 
+
+selected=QBrush(Qt.GlobalColor['green'])
+deselcted=QBrush(Qt.GlobalColor['white'])
 
 class MWindow(QMainWindow):
     def  __init__(self,wt):
@@ -18,9 +22,14 @@ class MWindow(QMainWindow):
         wt: window title
         '''
         super().__init__()
+        #data model
+        self.kph_conf=kph.gen_conf()
+
+        #windows setup
         self.setWindowTitle(wt)
 
         self.conf_window=config_window(self)
+        self.product_search=product_picker(self.kph_conf,self)
         
 
         #directory for saving any documents
@@ -77,9 +86,9 @@ class MWindow(QMainWindow):
         self.searcher.submit.clicked.connect(self.data_submitted)
         self.searcher.test_data_load.clicked.connect(self.load_test)
         self.conf_window.accepted.connect(self.update_save_path)
+        self.searcher.product.clicked.connect(self.product_window)
 
-        #data model
-        self.kph_conf=kph.gen_conf()
+
 
     #metaprogramming function for testing purposes  only
     def add_widget(self,name,**kwargs):
@@ -132,10 +141,7 @@ class MWindow(QMainWindow):
         data=kph.flow_handler(output_dict,self.kph_conf)
         self.table.load_data(data)
 
-    def update_save_path(self):
-        fl=open('conf.json','r')
-        path=json.load(fl)
-        self.save_path=path['path']
+
         
     def load_existing_data(self):
         #TODO
@@ -143,7 +149,17 @@ class MWindow(QMainWindow):
 
     def configuration_settings_setup(self):
         self.conf_window.show()
-        
+
+    def update_save_path(self):
+        fl=open('conf.json','r')
+        path=json.load(fl)
+        self.save_path=path['path']    
+
+    def product_window(self):
+        self.product_search.show()
+
+    def product_save(self):
+        pass
 
     def help_window(self):
         #TODO
@@ -271,7 +287,9 @@ class search_bar(QDockWidget):
         'origin subcontinent', 'origin trading region', 'products', 'routes', 'sellers','source', 'total','trade status','vessel type', 'vessel type cpp',''
         'vessel type oil' ])
 
-        self.product=QLineEdit('Enter items separated by a comma',self.search_form)
+        
+
+        self.product=QPushButton('Product')
 
         ##buttons
         self.submit=QPushButton('Submit',self.search_form)
@@ -323,6 +341,7 @@ class config_window(QDialog):
     def __init__(self,parent):
         super().__init__(parent)
         self.setWindowTitle('Configuration')
+        self.setBaseSize(700,100)
 
         #widget + layout combo
         main_layout=QGridLayout()
@@ -378,6 +397,82 @@ class config_window(QDialog):
         conf_fl=open('conf.json','w')
         json.dump(config,conf_fl)
         self.done(1)
+
+class product_picker(QDialog):
+    """
+    this function is going to help search products, it'll create a list of of checkable products that I can then send back as an argument to 
+    the main window. it will have a means to narrow the scope but in principle it will have the complete list you would get from doing Product.get()
+    it will have a search function that I intend to work with the regex matching coefficient
+    """
+    def __init__(self,conf,parent):
+        super().__init__(parent)
+        self.setWindowTitle('Product Picker')
+
+        #window items
+        self.search_bar=QLineEdit()
+        self.scope=QComboBox()
+        self.scope.addItems(ud.product_type)
+        self.search_list=QListWidget()
+        self.submit_btn=QPushButton('Submit')
+        
+        #properties
+        self.config=conf
+        #data
+        self.info=self.get_products(conf)
+        print(self.item_dict)
+        self.search_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+
+        #layout
+        layout=QGridLayout()
+        
+
+        layout.addWidget(self.search_bar,0,0)
+        layout.addWidget(self.scope,1,0)
+        layout.addWidget(self.search_list,2,0)
+        layout.addWidget(self.submit_btn,3,1)
+
+        self.setLayout(layout)
+
+        #signals
+        self.scope.currentTextChanged.connect(self.new_scope)
+
+    def narrow_scope(func):
+        def inner(self,conf,scope='',data=pd.DataFrame):
+
+            names=kph.Products(conf).get()
+            if not(scope):
+                return func(self,conf,scope,names)
+            else:
+                names=names.loc[names['Type (Product)']==scope]
+                return func(self,conf,scope,names)
+        return inner
+        
+    @narrow_scope
+    def get_products(self,conf,scope='',data=pd.DataFrame()):
+        
+        data['Id_prod_s']=data['Id (Product)'].astype(str)
+        display_names=data['Name'].to_list()
+        info=data['Id_prod_s'].copy()
+        self.item_dict={}
+        for i in range(len(info)):
+            self.search_list.addItem(display_names[i])
+            self.item_dict[i]=self.search_list.item(i)
+
+
+        return info
+    
+    def new_scope(self,text):
+        self.search_list.clear()
+        self.get_products(self.config,text)
+
+    
+    
+    
+
+
+
+        
+
 
 
 
